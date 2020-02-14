@@ -80,15 +80,19 @@ int decryptBlock(Block block)
 	{
 		int tempBit = getBit(block, i);
 		if (tempBit == 1)
-			setBit(tempBlock, key[i]);
+			tempBlock = setBit(tempBlock, key[i]);
 	}
 	return tempBlock;
 }
 
 int main()
 {
-	Block block = 0b11111;
-	printBlock(block);
-	printBlock(block, true);
+	Block block = 0xA6F5;
 	printKey();
+	printf("\n");
+	printBlock(block, true);
+	block = cryptBlock(block);
+	printBlock(block);
+	block = decryptBlock(block);
+	printBlock(block);
 }
