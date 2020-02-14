@@ -70,8 +70,9 @@ int main(int argc, char* argv[])
 	{
 		if (strcmp("-help", argv[i]) == 0)
 		{
-			printf("Help:\n\t-help - get help about params\n\t-crypt <filename> [-decrypt -compare] - crypt current \
-file and save it in root folder. If used with -decrypt -compare program check differences in source and decoded files.\n\t-decrypt <filename> - decrypt current file and save it in root folder\n");
+			printf("Help:\n\t-help - get help about params\n\t-crypt <filename> - crypt current. \
+file and save it in root folder like \"crypted.txt\".\n\t-decrypt <filename> - decrypt current file and save it in root folder like \"decrypted.txt\"\n\
+\t-compare <filename1> <filename2> - compare two files.\n");
 			return 0;
 		}
 		else
