@@ -99,5 +99,4 @@ int main(int argc, char* argv[])
 		printf("%d.\t%ld\n", i, GetRandValue());
 	}
 	return 0;
-	//qwe
 }
