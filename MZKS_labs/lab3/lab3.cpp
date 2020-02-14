@@ -35,7 +35,7 @@ int main(int argc, char* argv[])
 {
 	time_t t;
 	unsigned long int range = 0, seed = 0;
-
+	bool bSeed = false;
 	if (argc == 1)
 	{
 		printf("Range and seed was set to default . . \n\n");
@@ -69,6 +69,7 @@ int main(int argc, char* argv[])
 				}
 				i++;
 				seed = atoi(argv[i]);
+				bSeed = true;
 			}
 			else
 			{
@@ -78,7 +79,7 @@ int main(int argc, char* argv[])
 		}
 	}
 
-	if (seed == 0)
+	if (bSeed == false)
 	{
 		time(&t);
 		SetRand((unsigned long)t);
@@ -89,7 +90,7 @@ int main(int argc, char* argv[])
 	}
 	if (range == 0)
 	{
-		range = 32;
+		range = 16;
 	}
 	printf("Lab 3. Pseudo-random sequence generators\n\nSeed = %ld, Range = %d\n", I, range);
 	printf("Getting rand value . . .\n");
