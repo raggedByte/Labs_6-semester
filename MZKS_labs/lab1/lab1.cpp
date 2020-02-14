@@ -70,8 +70,8 @@ int main(int argc, char* argv[])
 	{
 		if (strcmp("-help", argv[i]) == 0)
 		{
-			printf("Help:\n\t-help - get help about params\n\t-crypt <filename> [-compare] - crypt current \
-file and save it in root folder\n\t-decrypt <filename> - decrypt current file and save it in root folder\n");
+			printf("Help:\n\t-help - get help about params\n\t-crypt <filename> [-decrypt -compare] - crypt current \
+file and save it in root folder. If used with -decrypt -compare program check differences in source and decoded files.\n\t-decrypt <filename> - decrypt current file and save it in root folder\n");
 			return 0;
 		}
 		else
@@ -130,8 +130,33 @@ file and save it in root folder\n\t-decrypt <filename> - decrypt current file an
 					decrypt = true;
 				}
 				else
-					if (strcmp("-compare", argv[i]))
+					if (strcmp("-compare", argv[i]) == 0)
 					{
+						if (i + 2 >= argc)
+						{
+							printf("Expected 2 file paths for compare! Try use \"-help\n");
+							return 0;
+						}
+						i++;
+						__try
+						{
+							sourcePath = (char*)malloc(sizeof(char) * strlen(argv[i]) + 1);
+							destPath = (char*)malloc(sizeof(char) * strlen(argv[i + 1]) + 1);
+							if (sourcePath == NULL || destPath == NULL)
+							{
+								printf("Program cannot alloc memory!\n");
+								return -1;
+							}
+						}
+						__except (EXCEPTION_EXECUTE_HANDLER)
+						{
+							printf("Was met exception! Code exception = %ld\n", GetExceptionCode());
+							return -1;
+						}
+						
+						strcpy_s(sourcePath, strlen(argv[i]) + 1, argv[i]);
+						strcpy_s(destPath, strlen(argv[i + 1]) + 1, argv[i + 1]);
+						i++;
 						compare = true;
 					}
 					else
@@ -199,12 +224,20 @@ file and save it in root folder\n\t-decrypt <filename> - decrypt current file an
 	}
 	if (compare)
 	{
-		if (!crypt)
+		STARTUPINFO SP;
+		ZeroMemory(&SP, sizeof(STARTUPINFO));
+		PROCESS_INFORMATION PI;
+		WCHAR* CommandLines;
+		CommandLines = (WCHAR*)malloc(sizeof(WCHAR) * 256);
+		wsprintf(CommandLines, L"\"C:\\Windows\\System32\\fc.exe\" %S decrypted.txt", sourcePath);
+		if (!CreateProcess(NULL, CommandLines, NULL, NULL, false, NULL, NULL, NULL, &SP, &PI))
 		{
-			printf("Param \"-compare\" should used with param \"-crypt\"!\n");
-			return 0;
+			printf("Error = %ld", GetLastError());
+			exit(-1);
 		}
-		/*compare here*/
+		free(CommandLines);
+		CloseHandle(PI.hProcess);
+		CloseHandle(PI.hThread);
 	}
 	return 0;
 }
