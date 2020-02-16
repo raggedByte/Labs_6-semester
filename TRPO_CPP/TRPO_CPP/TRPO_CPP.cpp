@@ -27,17 +27,27 @@ int main()
 
 	if (((pX - rX) * (pX - rX) + (pY - rY) * (pY - rY)) < radius * radius)	//точка принадлежит окружности
 	{
-		if ((pX > rX && pY > rY) || (pX > rX && pY > (rY - 0.6 * radius))
+		if ((pX > rX && pY > rY) || (pX > rX && pY < rY && pY > rY - radius * 0.6) || (pX < rX && pY < rY - radius * 0.6)) //точка принадлежит одной из областей
+		{
+			printf("Point belong to round!\n\n");
+			return 0;
+		}
+		else
+			if ((pX == rX) || (pY == rY - radius * 0.6)) //точка лежит на границе одной из областей
+			{
+				printf("Point lay on round!\n\n");
+				return 0;
+			}
+	}
+	else if (((pX - rX) * (pX - rX) + (pY - rY) * (pY - rY)) == radius * radius)
+	{
+		if ((pX >= rX && pY >= rY - radius * 0.6) || (pX <= rX && pY <= rY - radius * 0.6))
+			printf("Point lay on round!\n\n");
+		else
 		{
 			printf("Point don't belong to round!\n\n");
 			return 0;
 		}
-
-		printf("Point belong to round!\n\n");
-	}
-	else if (((pX - rX) * (pX - rX) + (pY - rY) * (pY - rY)) == radius * radius)
-	{
-		printf("Point lay on round!\n\n");
 	}
 	else
 	{
