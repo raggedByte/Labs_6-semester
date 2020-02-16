@@ -27,7 +27,7 @@ int main()
 
 	if (((pX - rX) * (pX - rX) + (pY - rY) * (pY - rY)) < radius * radius)	//точка принадлежит окружности
 	{
-		if (pX > rX && pY < rY)
+		if ((pX > rX && pY > rY) || (pX > rX && pY > (rY - 0.6 * radius))
 		{
 			printf("Point don't belong to round!\n\n");
 			return 0;
