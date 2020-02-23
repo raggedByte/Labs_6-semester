@@ -10,91 +10,90 @@ time(можно получить, используя функцию time_t time(
 	Вариант 4. Линейный конгруэнтный метод, a = 16807, c = 4
 */
 
+#include "windows.h"
 #include <cstdio>
 #include <time.h>
-#include <string.h>
-#include "stdlib.h"
 
-unsigned long int I = 0;
-const unsigned long int a = 16807;
-const unsigned long int c = 4;
-const unsigned long int m = 2147483648 - 1;
+ULONG I = 0;
+CONST ULONG a = 16807;
+CONST ULONG c = 4;
+CONST ULONG m = 2147483648 - 1;
 
-void SetRand(unsigned long int seed)
+VOID SetRand(ULONG seed)
 {
 	I = seed;
 }
 
-unsigned long int GetRandValue()
+ULONG GetRandValue()
 {
 	I = (a * I + c) % m;
 	return I;
 }
 
-int main(int argc, char* argv[])
+INT main(INT argc, PCHAR argv[])
 {
 	time_t t;
-	unsigned long int range = 0, seed = 0;
-	bool bSeed = false;
-	if (argc == 1)
+	ULONG  range = 0, seed = 0;
+
+	if (argc < 2)
 	{
-		printf("Range and seed was set to default . . \n\n");
+		printf("Expected params! Use -help \n\n");
+		return 0;
 	}
-	else
+
+	for (INT i = 1; i < argc; i++)
 	{
-		for (int i = 1; i < argc; i++)
+		if (strcmp("-help", argv[i]) == 0)
 		{
-			if (strcmp("-help", argv[i]) == 0)
+			printf("Help:\n\t-help - get help about params\n\t-range <value> - set range printable rand values \
+\n\t-seed <value> - set new seed for rand function\n\t-randomSeed - set seed as time on computer in seconds\n");
+			return 0;
+		}
+		else if (strcmp("-range", argv[i]) == 0)
+		{
+			if (++i >= argc)
 			{
-				printf("Help:\n\t-help - get help about params\n\t-range <value> - set range printable rand values \
-\n\t-seed <value> - set new seed for rand function\n");
+				printf("Expected value after param! Try use \"-help\n");
 				return 0;
 			}
-			else if (strcmp("-range", argv[i]) == 0)
+			range = atoi(argv[i]);
+		}
+		else if (strcmp("-seed", argv[i]) == 0)
+		{
+			if (++i >= argc)
 			{
-				if (i + 1 >= argc)
-				{
-					printf("Expected value after param! Try use \"-help\n");
-					return 0;
-				}
-				i++;
-				range = atoi(argv[i]);
-			}
-			else if (strcmp("-seed", argv[i]) == 0)
-			{
-				if (i + 1 >= argc)
-				{
-					printf("Expected value after param! Try use \"-help\n");
-					return 0;
-				}
-				i++;
-				seed = atoi(argv[i]);
-				bSeed = true;
-			}
-			else
-			{
-				printf("Unexpected param! Try use \"-help\"\n");
+				printf("Expected value after param! Try use \"-help\n");
 				return 0;
 			}
+			seed = atoi(argv[i]);
+			SetRand(seed);
+		}
+		else if (strcmp("-randomSeed", argv[i]) == 0)
+		{
+			time(&t);
+			SetRand((ULONG)t);
+		}
+		else
+		{
+			printf("Unexpected param! Try use \"-help\"\n");
+			return 0;
 		}
 	}
 
-	if (bSeed == false)
-	{
-		time(&t);
-		SetRand((unsigned long)t);
-	}
-	else
-	{
-		SetRand(seed);
-	}
 	if (range == 0)
 	{
 		range = 16;
 	}
+	if (seed == 0)
+	{
+		time(&t);
+		SetRand((ULONG)t);
+	}
+
 	printf("Lab 3. Pseudo-random sequence generators\n\nSeed = %ld, Range = %d\n", I, range);
 	printf("Getting rand value . . .\n");
-	for (int i = 0; i < range; i++)
+
+	for (ULONG i = 0; i < range; i++)
 	{
 		printf("%d.\t%ld\n", i, GetRandValue());
 	}
