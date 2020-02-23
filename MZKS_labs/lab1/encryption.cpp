@@ -1,17 +1,17 @@
 #include "encryption.h"
 
-DWORD EncryptBlock(PBYTE block)
+VOID EncryptBlock(PBYTE block)
 {
 	DWORD lengthBlock = strlen((char*)block);
 	BYTE tempBlock[SIZE_BLOCK + 1] = "";
 
-	if (lengthBlock != SIZE_BLOCK)
+	/*if (lengthBlock != SIZE_BLOCK)
 	{
 		for (UINT i = 0; i < SIZE_BLOCK - lengthBlock; i++)
 		{
 			block[i + lengthBlock] = ' ';
 		}
-	}
+	}*/
 
 	for (UINT i = 0; i < SIZE_BLOCK; i++)
 	{
@@ -19,8 +19,6 @@ DWORD EncryptBlock(PBYTE block)
 	}
 
 	memcpy_s(block, SIZE_BLOCK + 1, tempBlock, SIZE_BLOCK + 1);
-
-	return SIZE_BLOCK - lengthBlock;
 }
 
 VOID DecryptBlock(PBYTE block)
@@ -38,7 +36,6 @@ BOOL encryptFile(LPCWSTR fileName)
 {
 	HANDLE hSourceFile, hDestFile;
 	DWORD dwReaded = 0, dwWrote = 0;
-	DWORD dwCountTacts = 0, dwOffset = 0;
 	BYTE buffer[SIZE_BLOCK + 1];
 	BOOL bResult = FALSE;
 
@@ -56,7 +53,15 @@ BOOL encryptFile(LPCWSTR fileName)
 		return -1;
 	}
 
-	SetFilePointer(hDestFile, sizeof(DWORD) * 2, NULL, FILE_BEGIN);
+	DWORD dwSizeH = 0, dwSizeL = 0;
+	dwSizeL = GetFileSize(hSourceFile, &dwSizeH);
+	LONGLONG fileLength = ((LONGLONG)dwSizeH * ((LONGLONG)MAXDWORD + 1)) + dwSizeL;
+
+	if (!WriteFile(hDestFile, &fileLength, sizeof(LONGLONG), &dwWrote, NULL))
+	{
+		printf("Error WriteFile! error = %ld\n", GetLastError());
+		return FALSE;
+	}
 
 	do
 	{
@@ -68,28 +73,14 @@ BOOL encryptFile(LPCWSTR fileName)
 		}
 		if (dwReaded)
 		{
-			dwOffset = EncryptBlock(buffer);
+			EncryptBlock(buffer);
 			if (!WriteFile(hDestFile, buffer, SIZE_BLOCK, &dwWrote, NULL))
 			{
 				printf("Error WriteFile! error = %ld\n", GetLastError());
 				return FALSE;
 			}
-			dwCountTacts++;
 		}
 	} while (bResult && dwReaded);
-
-	SetFilePointer(hDestFile, 0, NULL, FILE_BEGIN);
-
-	if (!WriteFile(hDestFile, &dwCountTacts, sizeof(DWORD), &dwWrote, NULL))
-	{
-		printf("Error WriteFile! error = %ld\n", GetLastError());
-		return FALSE;
-	}
-	if (!WriteFile(hDestFile, &dwOffset, sizeof(DWORD), &dwWrote, NULL))
-	{
-		printf("Error WriteFile! error = %ld\n", GetLastError());
-		return FALSE;
-	}
 
 	CloseHandle(hSourceFile);
 	CloseHandle(hDestFile);
@@ -101,7 +92,6 @@ BOOL decryptFile(LPCWSTR fileName)
 {
 	HANDLE hSourceFile, hDestFile;
 	DWORD dwReaded = 0, dwWrote = 0;
-	DWORD dwCountTacts, dwOffset;
 	BYTE buffer[SIZE_BLOCK + 1];
 	BOOL bResult = FALSE;
 
@@ -119,19 +109,17 @@ BOOL decryptFile(LPCWSTR fileName)
 		return -1;
 	}
 
-	if (!ReadFile(hSourceFile, &dwCountTacts, sizeof(DWORD), &dwReaded, NULL))
-	{
-		printf("Error ReadFile! error = %ld\n", GetLastError());
-		return FALSE;
-	}
-	if (!ReadFile(hSourceFile, &dwOffset, sizeof(DWORD), &dwReaded, NULL))
+	LONGLONG sourceLength;
+
+	if (!ReadFile(hSourceFile, &sourceLength, sizeof(LONGLONG), &dwReaded, NULL))
 	{
 		printf("Error ReadFile! error = %ld\n", GetLastError());
 		return FALSE;
 	}
 
-	do
+	while (sourceLength > SIZE_BLOCK)
 	{
+		sourceLength -= SIZE_BLOCK;
 		memset(buffer, 0, SIZE_BLOCK + 1);
 		if (!(bResult = ReadFile(hSourceFile, buffer, SIZE_BLOCK, &dwReaded, NULL)))
 		{
@@ -141,24 +129,26 @@ BOOL decryptFile(LPCWSTR fileName)
 		if (dwReaded)
 		{
 			DecryptBlock(buffer);
-			if (--dwCountTacts == 0)
+			if (!WriteFile(hDestFile, buffer, SIZE_BLOCK, &dwWrote, NULL))
 			{
-				if (!WriteFile(hDestFile, buffer, SIZE_BLOCK - dwOffset, &dwWrote, NULL))
-				{
-					printf("Error WriteFile! error = %ld\n", GetLastError());
-					return FALSE;
-				}
-			}
-			else
-			{
-				if (!WriteFile(hDestFile, buffer, SIZE_BLOCK, &dwWrote, NULL))
-				{
-					printf("Error WriteFile! error = %ld\n", GetLastError());
-					return FALSE;
-				}
+				printf("Error WriteFile! error = %ld\n", GetLastError());
+				return FALSE;
 			}
 		}
-	} while (bResult && dwReaded);
+	}
+
+	memset(buffer, 0, SIZE_BLOCK + 1);
+	if (!(bResult = ReadFile(hSourceFile, buffer, SIZE_BLOCK, &dwReaded, NULL)))
+	{
+		printf("Error ReadFile! error = %ld\n", GetLastError());
+		return FALSE;
+	}
+	DecryptBlock(buffer);
+	if (!WriteFile(hDestFile, buffer, sourceLength, &dwWrote, NULL))
+	{
+		printf("Error WriteFile! error = %ld\n", GetLastError());
+		return FALSE;
+	}
 
 	CloseHandle(hSourceFile);
 	CloseHandle(hDestFile);
