@@ -147,10 +147,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="encryption.cpp" />
     <ClCompile Include="lab1.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <Text Include="file.txt" />
+    <ClInclude Include="encryption.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

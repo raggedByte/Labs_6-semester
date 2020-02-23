@@ -1,1 +1,0 @@
-f the calling process is impersonating another user, the new process uses the token for the calling process, not the impersonation token.

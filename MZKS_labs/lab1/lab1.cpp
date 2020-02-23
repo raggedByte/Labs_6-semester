@@ -4,241 +4,101 @@
 перестановочного шифра используя в качестве ключа последовательность,
 соответствующую номеру варианта. Выполнить проверку путем двоичного
 сравнения исходного файла и фала, полученного после расшифровывания.
-
 	Вариант 4. Ключ - 1 2 10 4 8 7 3 6 9 5
 */
 
-#include "windows.h"
-#include <cstdio>
+#include "stdio.h"
+#include "encryption.h"
 
-int key[] = { 1, 2, 10, 4, 8, 7, 3, 6, 9, 5 };
-const unsigned int SIZE_BLOCK = (sizeof(key) / sizeof(int));
-
-void cryptMessage(char* message)
+int wmain(int argc, wchar_t* argv[])
 {
-	int length = strlen(message);
-	if (length != SIZE_BLOCK)
-	{
-		for (int i = 0; i < SIZE_BLOCK - length; i++)
-		{
-			message[i + length] = ' ';
-		}
-	}
-	char tempBuffer[SIZE_BLOCK + 1];
-	tempBuffer[SIZE_BLOCK] = 0;
-	for (int i = 0; i < SIZE_BLOCK; i++)
-	{
-		tempBuffer[i] = message[key[i] - 1];
-	}
-	//strcpy(message, tempBuffer);
-	strcpy_s(message, SIZE_BLOCK + 1, tempBuffer);
-}
+	PWSTR sEncryptPath = 0;
+	PWSTR sDecryptPath = 0;
+	BOOL bCompare = false;
 
-void decryptMessage(char* message)
-{
-	int length = strlen(message);
-	if (length != SIZE_BLOCK)
-	{
-		for (int i = 0; i < SIZE_BLOCK - length; i++)
-		{
-			message[i + length] = ' ';
-		}
-	}
-	char tempBuffer[SIZE_BLOCK + 1];
-	tempBuffer[SIZE_BLOCK] = 0;
-	for (int i = 0; i < SIZE_BLOCK; i++)
-	{
-		tempBuffer[key[i] - 1] = message[i];
-	}
-	//strcpy(message, tempBuffer);
-	strcpy_s(message, SIZE_BLOCK + 1, tempBuffer);
-}
+	printf("Lab 1. Crypt and decrypt text.\n\n");
 
-int main(int argc, char* argv[])
-{
-	char* sourcePath = 0, * destPath = 0;
-	bool crypt = false, decrypt = false, compare = false;
-	FILE* pSourceFile = 0, * pDestFile = 0;
-	char buffer[SIZE_BLOCK + 1];
-
-	if (argc <= 1)
+	if (argc < 2)
 	{
-		printf("Programm was openned without params. \nUse param \"-help\" for get help\n");
+		printf("Expected more params! Use -help for help . . .\n");
 		return 0;
 	}
+
 	for (int i = 1; i < argc; i++)
 	{
-		if (strcmp("-help", argv[i]) == 0)
+		if (wcscmp(TEXT("-help"), argv[i]) == 0)
 		{
 			printf("Help:\n\t-help - get help about params\n\t-crypt <filename> - crypt current. \
 file and save it in root folder like \"crypted.txt\".\n\t-decrypt <filename> - decrypt current file and save it in root folder like \"decrypted.txt\"\n\
 \t-compare <filename1> <filename2> - compare two files.\n");
 			return 0;
 		}
-		else
-			if (strcmp("-crypt", argv[i]) == 0)
+		else if (wcscmp(TEXT("-encrypt"), argv[i]) == 0)
+		{
+			if (++i >= argc)
 			{
-				if (i + 1 >= argc)
-				{
-					printf("Expected file path for crypt! Try use \"-help\n");
-					return 0;
-				}
-				i++;
-				__try
-				{
-					sourcePath = (char*)malloc(sizeof(char) * strlen(argv[i]) + 1);
-					if (sourcePath == NULL)
-					{
-						printf("Program cannot alloc memory!\n");
-						return -1;
-					}
-				}
-				__except (EXCEPTION_EXECUTE_HANDLER)
-				{
-					printf("Was met exception! Code exception = %ld\n", GetExceptionCode());
-					return -1;
-				}
-				//strcpy(sourcePath, argv[i]);
-				strcpy_s(sourcePath, strlen(argv[i]) + 1, argv[i]);
-				crypt = true;
+				printf("Expected file path for encrypt! Try use \"-help\n");
+				return 0;
 			}
-			else
-				if (strcmp("-decrypt", argv[i]) == 0)
-				{
-					if (i + 1 >= argc)
-					{
-						printf("Expected file path for decrypt! Try use \"-help\n");
-						return 0;
-					}
-					i++;
-					__try
-					{
-						destPath = (char*)malloc(sizeof(char) * strlen(argv[i]) + 1);
-						if (destPath == NULL)
-						{
-							printf("Program cannot alloc memory!\n");
-							return -1;
-						}
-					}
-					__except (EXCEPTION_EXECUTE_HANDLER)
-					{
-						printf("Was met exception! Code exception = %ld\n", GetExceptionCode());
-						return -1;
-					}
-					//strcpy(destPath, argv[i]);
-					strcpy_s(destPath, strlen(argv[i]) + 1, argv[i]);
-
-					decrypt = true;
-				}
-				else
-					if (strcmp("-compare", argv[i]) == 0)
-					{
-						if (i + 2 >= argc)
-						{
-							printf("Expected 2 file paths for compare! Try use \"-help\n");
-							return 0;
-						}
-						i++;
-						__try
-						{
-							sourcePath = (char*)malloc(sizeof(char) * strlen(argv[i]) + 1);
-							destPath = (char*)malloc(sizeof(char) * strlen(argv[i + 1]) + 1);
-							if (sourcePath == NULL || destPath == NULL)
-							{
-								printf("Program cannot alloc memory!\n");
-								return -1;
-							}
-						}
-						__except (EXCEPTION_EXECUTE_HANDLER)
-						{
-							printf("Was met exception! Code exception = %ld\n", GetExceptionCode());
-							return -1;
-						}
-						
-						strcpy_s(sourcePath, strlen(argv[i]) + 1, argv[i]);
-						strcpy_s(destPath, strlen(argv[i + 1]) + 1, argv[i + 1]);
-						i++;
-						compare = true;
-					}
-					else
-					{
-						printf("Unexpected param! Try use \"-help\"\n");
-						return 0;
-					}
+			sEncryptPath = argv[i];
+		}
+		else if (wcscmp(TEXT("-decrypt"), argv[i]) == 0)
+		{
+			if (++i >= argc)
+			{
+				printf("Expected file path for decrypt! Try use \"-help\n");
+				return 0;
+			}
+			sDecryptPath = argv[i];
+		}
+		else if (wcscmp(TEXT("-compare"), argv[i]) == 0)
+		{
+			bCompare = true;
+		}
+		else
+		{
+			printf("Unexpected param! Try use \"-help\"\n");
+			return 0;
+		}
 	}
 
-	printf("Lab 1. Crypt and decrypt text.\n\n");
+	if (sEncryptPath)
+	{
+		if (!encryptFile(sEncryptPath))
+		{
+			printf("Error while prorgram encrypt file! Error = %ld\n", GetLastError());
+			return -1;
+		}
+		printf("File encrypted!\n");
+	}
 
-	if (crypt)
+	if (sDecryptPath)
 	{
-		fopen_s(&pSourceFile, sourcePath, "r+");
-		if (pSourceFile == 0)
+		if (!decryptFile(sDecryptPath))
 		{
-			printf("Cannot open file! Check source path in param! \nTry use \"-help\"\n");
-			return 0;
+			printf("Error while prorgram decrypt file! Error = %ld\n", GetLastError());
+			return -1;
 		}
-		fopen_s(&pDestFile, "crypted.txt", "w");
-		if (pDestFile == 0)
-		{
-			printf("Cannot create file! Check source path in param! \nTry use \"-help\"\n");
-			return 0;
-		}
-		while (!feof(pSourceFile))
-		{
-			memset(buffer, 0, SIZE_BLOCK + 1);
-			fread(buffer, 1, SIZE_BLOCK, pSourceFile);
-			if (strlen(buffer) == 0)
-				break;
-			cryptMessage(buffer);
-			fprintf(pDestFile, "%s", buffer);
-		}
-		printf("File %s was crypted! Check new file \"crypted.txt\"\n", sourcePath);
-		fclose(pSourceFile);
-		fclose(pDestFile);
+		printf("File decrypted!\n");
 	}
-	if (decrypt)
+
+	if (bCompare)
 	{
-		fopen_s(&pSourceFile, destPath, "r+");
-		if (pSourceFile == NULL)
+		if (sEncryptPath && sDecryptPath)
 		{
-			printf("Cannot open file! Check source path in param! \nTry use \"-help\"\n");
-			return 0;
+			PWSTR commandLine = (PWSTR)malloc(sizeof(WCHAR) * 256);
+			if (commandLine == 0)
+			{
+				return -1;
+			}
+
+			wsprintf(commandLine, L"fc %ls decrypted.txt", sEncryptPath);
+			_wsystem(commandLine);
 		}
-		fopen_s(&pDestFile, "decrypted.txt", "w");
-		if (pDestFile == NULL)
+		else
 		{
-			printf("Cannot create file! \nTry use \"-help\"\n");
-			return 0;
+			printf("Param -compare shoud use with params -encrypt and -decrypt!\n Use -help!\n");
+			return -1;
 		}
-		while (!feof(pSourceFile))
-		{
-			memset(buffer, 0, SIZE_BLOCK + 1);
-			fread(buffer, 1, SIZE_BLOCK, pSourceFile);
-			if (strlen(buffer) == 0)
-				break;
-			decryptMessage(buffer);
-			fprintf(pDestFile, "%s", buffer);
-		}
-		printf("File %s was decrypted! Check new file \"decrypted.txt\"\n", destPath);
-		fclose(pSourceFile);
-		fclose(pDestFile);
 	}
-	if (compare)
-	{
-		STARTUPINFO SP;
-		ZeroMemory(&SP, sizeof(STARTUPINFO));
-		PROCESS_INFORMATION PI;
-		WCHAR* CommandLines;
-		CommandLines = (WCHAR*)malloc(sizeof(WCHAR) * 256);
-		wsprintf(CommandLines, L"\"C:\\Windows\\System32\\fc.exe\" %S decrypted.txt", sourcePath);
-		if (!CreateProcess(NULL, CommandLines, NULL, NULL, false, NULL, NULL, NULL, &SP, &PI))
-		{
-			printf("Error = %ld", GetLastError());
-			exit(-1);
-		}
-		free(CommandLines);
-		CloseHandle(PI.hProcess);
-		CloseHandle(PI.hThread);
-	}
-	return 0;
 }
