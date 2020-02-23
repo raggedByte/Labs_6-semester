@@ -60,7 +60,6 @@ BOOL decryptFile(LPCWSTR fileName)
 	HANDLE hSourceFile, hDestFile;
 	DWORD dwReaded = 0, dwWrote = 0;
 	BLOCK block = 0;
-	//BOOL bResult = FALSE;
 
 	hSourceFile = CreateFile(fileName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (hSourceFile == INVALID_HANDLE_VALUE)
@@ -111,7 +110,7 @@ BOOL decryptFile(LPCWSTR fileName)
 		return FALSE;
 	}
 	block = DecryptBlock(block);
-	if (!WriteFile(hDestFile, &block, sourceLength, &dwWrote, NULL))
+	if (!WriteFile(hDestFile, &block, (DWORD)sourceLength, &dwWrote, NULL))
 	{
 		printf("Error WriteFile! error = %ld\n", GetLastError());
 		return FALSE;

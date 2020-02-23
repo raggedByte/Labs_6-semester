@@ -10,11 +10,11 @@
 #include "stdio.h"
 #include "encryption.h"
 
-int wmain(int argc, wchar_t* argv[])
+INT wmain(INT argc, PWSTR argv[])
 {
 	PWSTR sEncryptPath = 0;
 	PWSTR sDecryptPath = 0;
-	BOOL bCompare = false;
+	BOOL bCompare = FALSE, bCheckWork = FALSE;
 
 	printf("Lab 1. Crypt and decrypt text.\n\n");
 
@@ -24,13 +24,14 @@ int wmain(int argc, wchar_t* argv[])
 		return 0;
 	}
 
-	for (int i = 1; i < argc; i++)
+	for (INT i = 1; i < argc; i++)
 	{
 		if (wcscmp(TEXT("-help"), argv[i]) == 0)
 		{
-			printf("Help:\n\t-help - get help about params\n\t-crypt <filename> - crypt current. \
-file and save it in root folder like \"crypted.txt\".\n\t-decrypt <filename> - decrypt current file and save it in root folder like \"decrypted.txt\"\n\
-\t-compare <filename1> <filename2> - compare two files.\n");
+			printf("Help:\n\t-help - get help about params.\n\t-encrypt <filename> - encrypt current \
+file and save it in root folder like \"encrypted\".\n\t-decrypt <filename> - decrypt current file and save it in root folder like \"decrypted\".\n\
+\t-compare - compare two files and show difference. Should use with -encrypt and -decrypt!\n\
+\t-checkWork <filename> - encrypt file, decrypt file and compare result decryption with source file.\n");
 			return 0;
 		}
 		else if (wcscmp(TEXT("-encrypt"), argv[i]) == 0)
@@ -55,6 +56,16 @@ file and save it in root folder like \"crypted.txt\".\n\t-decrypt <filename> - d
 		{
 			bCompare = true;
 		}
+		else if (wcscmp(TEXT("-checkWork"), argv[i]) == 0)
+		{
+			if (++i >= argc)
+			{
+				printf("Expected file path for decrypt! Try use \"-help\n");
+				return 0;
+			}
+			sEncryptPath = argv[i];
+			bCheckWork = true;
+		}
 		else
 		{
 			printf("Unexpected param! Try use \"-help\"\n");
@@ -72,6 +83,17 @@ file and save it in root folder like \"crypted.txt\".\n\t-decrypt <filename> - d
 		printf("File encrypted!\n");
 	}
 
+	if (bCheckWork)
+	{
+		sDecryptPath = (PWSTR)malloc(sizeof(WCHAR) * wcslen(TEXT("encrypted")) + 1);
+		if (sDecryptPath == 0)
+		{
+			printf("Error! Cannot alloc memory!\n");
+			return -1;
+		}
+		wsprintf(sDecryptPath, TEXT("encrypted"));
+	}
+
 	if (sDecryptPath)
 	{
 		if (!decryptFile(sDecryptPath))
@@ -82,7 +104,7 @@ file and save it in root folder like \"crypted.txt\".\n\t-decrypt <filename> - d
 		printf("File decrypted!\n");
 	}
 
-	if (bCompare)
+	if (bCompare || bCheckWork)
 	{
 		if (sEncryptPath && sDecryptPath)
 		{
@@ -92,7 +114,9 @@ file and save it in root folder like \"crypted.txt\".\n\t-decrypt <filename> - d
 				return -1;
 			}
 
-			wsprintf(commandLine, L"fc %ls decrypted.txt", sEncryptPath);
+			printf("\n");
+
+			wsprintf(commandLine, L"fc %ls decrypted", sEncryptPath);
 			_wsystem(commandLine);
 		}
 		else

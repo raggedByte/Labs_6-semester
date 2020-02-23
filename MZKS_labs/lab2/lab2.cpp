@@ -11,11 +11,11 @@
 #include <cstdio>
 #include "encryptions.h"
 
-int wmain(INT argc, PWSTR argv[])
+INT wmain(INT argc, PWSTR argv[])
 {
 	PWSTR sEncryptPath = 0;
 	PWSTR sDecryptPath = 0;
-	BOOL  bCompare = false, bCheckWork = false;
+	BOOL  bCompare = FALSE, bCheckWork = FALSE;
 
 	printf("\nLab 2. Crypt and decrypt text with bits encrypting.\n\n");
 
@@ -25,7 +25,7 @@ int wmain(INT argc, PWSTR argv[])
 		return 0;
 	}
 
-	for (UINT i = 1; i < argc; i++)
+	for (INT i = 1; i < argc; i++)
 	{
 		if (wcscmp(TEXT("-help"), argv[i]) == 0)
 		{
@@ -55,7 +55,7 @@ file and save it in root folder like \"encrypted\".\n\t-decrypt <filename> - dec
 		}
 		else if (wcscmp(TEXT("-compare"), argv[i]) == 0)
 		{
-			bCompare = true;
+			bCompare = TRUE;
 		}
 		else if (wcscmp(TEXT("-checkWork"), argv[i]) == 0)
 		{
@@ -65,7 +65,7 @@ file and save it in root folder like \"encrypted\".\n\t-decrypt <filename> - dec
 				return 0;
 			}
 			sEncryptPath = argv[i];
-			bCheckWork = true;
+			bCheckWork = TRUE;
 		}
 		else
 		{
@@ -74,7 +74,7 @@ file and save it in root folder like \"encrypted\".\n\t-decrypt <filename> - dec
 		}
 	}
 
-	if (sEncryptPath || bCheckWork)
+	if (sEncryptPath)
 	{
 		if (!encryptFile(sEncryptPath))
 		{
@@ -87,6 +87,11 @@ file and save it in root folder like \"encrypted\".\n\t-decrypt <filename> - dec
 	if (bCheckWork)
 	{
 		sDecryptPath = (PWSTR)malloc(sizeof(WCHAR) * wcslen(TEXT("encrypted")) + 1);
+		if (sDecryptPath == 0)
+		{
+			printf("Error! Cannot alloc memory!\n");
+			return -1;
+		}
 		wsprintf(sDecryptPath, TEXT("encrypted"));
 	}
 
