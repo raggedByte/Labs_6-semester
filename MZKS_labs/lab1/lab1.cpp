@@ -105,14 +105,8 @@ INT wmain(INT argc, PWSTR argv[])
 	{
 		if (lpszEncryptPath && lpszDecryptPath)
 		{
-			PWSTR commandLine = (PWSTR)malloc(sizeof(WCHAR) * 256);
-			if (commandLine == 0)
-			{
-				return -1;
-			}
-
-			printf("\n");
-
+			WCHAR commandLine[256];
+			
 			wsprintf(commandLine, L"fc %ls decrypted", lpszEncryptPath);
 			_wsystem(commandLine);
 		}
