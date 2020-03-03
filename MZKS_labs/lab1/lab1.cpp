@@ -12,9 +12,9 @@
 
 INT wmain(INT argc, PWSTR argv[])
 {
-	PWSTR sEncryptPath = 0;
-	PWSTR sDecryptPath = 0;
-	BOOL bCompare = FALSE, bCheckWork = FALSE;
+	PWSTR lpszEncryptPath = 0;
+	PWSTR lpszDecryptPath = 0;
+	BOOL bCompare = FALSE;
 
 	printf("Lab 1. Crypt and decrypt text.\n\n");
 
@@ -28,8 +28,9 @@ INT wmain(INT argc, PWSTR argv[])
 	{
 		if (wcscmp(TEXT("-help"), argv[i]) == 0)
 		{
-			printf("Help:\n\t-help - get help about params.\n\t-encrypt <filename> - encrypt current \
-file and save it in root folder like \"encrypted\".\n\t-decrypt <filename> - decrypt current file and save it in root folder like \"decrypted\".\n\
+			printf("Help:\n\
+\t-encrypt <filename> - encrypt current file and save it in root folder like \"encrypted\".\n\
+\t-decrypt <filename> - decrypt current file and save it in root folder like \"decrypted\".\n\
 \t-compare - compare two files and show difference. Should use with -encrypt and -decrypt!\n\
 \t-checkWork <filename> - encrypt file, decrypt file and compare result decryption with source file.\n");
 			return 0;
@@ -41,7 +42,7 @@ file and save it in root folder like \"encrypted\".\n\t-decrypt <filename> - dec
 				printf("Expected file path for encrypt! Try use \"-help\n");
 				return 0;
 			}
-			sEncryptPath = argv[i];
+			lpszEncryptPath = argv[i];
 		}
 		else if (wcscmp(TEXT("-decrypt"), argv[i]) == 0)
 		{
@@ -50,7 +51,7 @@ file and save it in root folder like \"encrypted\".\n\t-decrypt <filename> - dec
 				printf("Expected file path for decrypt! Try use \"-help\n");
 				return 0;
 			}
-			sDecryptPath = argv[i];
+			lpszDecryptPath = argv[i];
 		}
 		else if (wcscmp(TEXT("-compare"), argv[i]) == 0)
 		{
@@ -63,8 +64,15 @@ file and save it in root folder like \"encrypted\".\n\t-decrypt <filename> - dec
 				printf("Expected file path for decrypt! Try use \"-help\n");
 				return 0;
 			}
-			sEncryptPath = argv[i];
-			bCheckWork = true;
+			lpszEncryptPath = argv[i];
+			lpszDecryptPath = (PWSTR)malloc(sizeof(WCHAR) * wcslen(TEXT("encrypted")) + 1);
+			if (lpszDecryptPath == 0)
+			{
+				printf("Error! Cannot alloc memory!\n");
+				return -1;
+			}
+			wsprintf(lpszDecryptPath, TEXT("encrypted"));
+			bCompare = true;
 		}
 		else
 		{
@@ -73,9 +81,9 @@ file and save it in root folder like \"encrypted\".\n\t-decrypt <filename> - dec
 		}
 	}
 
-	if (sEncryptPath)
+	if (lpszEncryptPath)
 	{
-		if (!encryptFile(sEncryptPath))
+		if (!encryptFile(lpszEncryptPath))
 		{
 			printf("Error while prorgram encrypt file! Error = %ld\n", GetLastError());
 			return -1;
@@ -83,20 +91,9 @@ file and save it in root folder like \"encrypted\".\n\t-decrypt <filename> - dec
 		printf("File encrypted!\n");
 	}
 
-	if (bCheckWork)
+	if (lpszDecryptPath)
 	{
-		sDecryptPath = (PWSTR)malloc(sizeof(WCHAR) * wcslen(TEXT("encrypted")) + 1);
-		if (sDecryptPath == 0)
-		{
-			printf("Error! Cannot alloc memory!\n");
-			return -1;
-		}
-		wsprintf(sDecryptPath, TEXT("encrypted"));
-	}
-
-	if (sDecryptPath)
-	{
-		if (!decryptFile(sDecryptPath))
+		if (!decryptFile(lpszDecryptPath))
 		{
 			printf("Error while prorgram decrypt file! Error = %ld\n", GetLastError());
 			return -1;
@@ -104,9 +101,9 @@ file and save it in root folder like \"encrypted\".\n\t-decrypt <filename> - dec
 		printf("File decrypted!\n");
 	}
 
-	if (bCompare || bCheckWork)
+	if (bCompare)
 	{
-		if (sEncryptPath && sDecryptPath)
+		if (lpszEncryptPath && lpszDecryptPath)
 		{
 			PWSTR commandLine = (PWSTR)malloc(sizeof(WCHAR) * 256);
 			if (commandLine == 0)
@@ -116,7 +113,7 @@ file and save it in root folder like \"encrypted\".\n\t-decrypt <filename> - dec
 
 			printf("\n");
 
-			wsprintf(commandLine, L"fc %ls decrypted", sEncryptPath);
+			wsprintf(commandLine, L"fc %ls decrypted", lpszEncryptPath);
 			_wsystem(commandLine);
 		}
 		else
