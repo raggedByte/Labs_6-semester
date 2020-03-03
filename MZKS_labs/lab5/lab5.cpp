@@ -22,12 +22,9 @@ INT wmain(INT argc, PWSTR argv[])
 	SECURITY_ATTRIBUTES sa;
 	HKEY hkSub = NULL;
 
-	PWSTR sNameKey = 0;
-	BOOL mode = FALSE;
-	PWSTR path = 0;
-	path = (PWSTR)malloc(sizeof(WCHAR) * 128);
-	if (path == 0)
-		return -1;
+	PWSTR lpszNameKey = 0;
+	WCHAR lpszPathRegister[128];
+	BOOL bMode = FALSE;
 
 	printf("\nLab 5. Creating key with Security Attributes\n\n");
 
@@ -41,7 +38,8 @@ INT wmain(INT argc, PWSTR argv[])
 	{
 		if (wcscmp(TEXT("-help"), argv[i]) == 0)
 		{
-			printf("Help:\n\t-help - get help about params.\n\t-reg <key> - reg key in registry\n\
+			printf("Help:\n\
+\t-reg <key> - reg key in registry\n\
 \t-delete <key> - delete key in registry\n");
 			return 0;
 		}
@@ -52,8 +50,8 @@ INT wmain(INT argc, PWSTR argv[])
 				printf("Expected name of key! Try use \"-help\n");
 				return 0;
 			}
-			sNameKey = argv[i];
-			mode = TRUE;
+			lpszNameKey = argv[i];
+			bMode = TRUE;
 		}
 		else if (wcscmp(TEXT("-delete"), argv[i]) == 0)
 		{
@@ -62,12 +60,12 @@ INT wmain(INT argc, PWSTR argv[])
 				printf("Expected name of key! Try use \"-help\n");
 				return 0;
 			}
-			sNameKey = argv[i];
-			mode = FALSE;
+			lpszNameKey = argv[i];
+			bMode = FALSE;
 		}
 	}
 
-	if (mode)
+	if (bMode)
 	{
 		// Create a well-known SID for the Everyone group.
 		if (!AllocateAndInitializeSid(&SIDAuthWorld, 1,
@@ -153,12 +151,9 @@ INT wmain(INT argc, PWSTR argv[])
 
 		HKEY hKey;
 
-		if (sNameKey == 0)
-			return -1;
+		wsprintf(lpszPathRegister, L"Software\\%ls", lpszNameKey);
 
-		wsprintf(path, L"Software\\%ls", sNameKey);
-
-		if (RegCreateKeyEx(HKEY_CURRENT_USER, path, 0, NULL, REG_OPTION_VOLATILE,
+		if (RegCreateKeyEx(HKEY_CURRENT_USER, lpszPathRegister, 0, NULL, REG_OPTION_VOLATILE,
 			KEY_WRITE, &sa, &hKey, NULL) != ERROR_SUCCESS)
 		{
 			printf("Error! Cannot not create key\n");
@@ -180,19 +175,19 @@ INT wmain(INT argc, PWSTR argv[])
 		if (hkSub)
 			RegCloseKey(hkSub);
 
-		printf("Key \"%ls\" was created!\n", path);
+		printf("Key \"%ls\" was created!\n", lpszPathRegister);
 		return 0;
 	}
 	else
 	{
-		wsprintf(path, L"Software\\%ls", sNameKey);
+		wsprintf(lpszPathRegister, L"Software\\%ls", lpszNameKey);
 		DWORD dwResult;
-		dwResult = RegDeleteKey(HKEY_CURRENT_USER, path);
+		dwResult = RegDeleteKey(HKEY_CURRENT_USER, lpszPathRegister);
 		if (dwResult != ERROR_SUCCESS)
 		{
 			printf("Cannot delete current key!\n");
 			return -1;
 		}
-		printf("Key \"%ls\" was deleted!\n", path);
+		printf("Key \"%ls\" was deleted!\n", lpszPathRegister);
 	}
 }
