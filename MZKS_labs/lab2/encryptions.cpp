@@ -83,9 +83,8 @@ BOOL decryptFile(LPCWSTR fileName)
 		return FALSE;
 	}
 
-	while (sourceLength > SIZE_BLOCK)
+	while (sourceLength > 0)
 	{
-		sourceLength -= SIZE_BLOCK;
 		memset(&block, 0, SIZE_BLOCK);
 		if (!ReadFile(hSourceFile, &block, SIZE_BLOCK, &dwReaded, NULL))
 		{
@@ -95,14 +94,15 @@ BOOL decryptFile(LPCWSTR fileName)
 		if (dwReaded)
 		{
 			block = DecryptBlock(block);
-			if (!WriteFile(hDestFile, &block, SIZE_BLOCK, &dwWrote, NULL))
+			if (!WriteFile(hDestFile, &block, sourceLength > SIZE_BLOCK ? SIZE_BLOCK : (DWORD)sourceLength, &dwWrote, NULL))
 			{
 				printf("Error WriteFile! error = %ld\n", GetLastError());
 				return FALSE;
 			}
 		}
+		sourceLength -= SIZE_BLOCK;
 	}
-
+	/*
 	memset(&block, 0, SIZE_BLOCK);
 	if (!ReadFile(hSourceFile, &block, SIZE_BLOCK, &dwReaded, NULL))
 	{
@@ -115,7 +115,7 @@ BOOL decryptFile(LPCWSTR fileName)
 		printf("Error WriteFile! error = %ld\n", GetLastError());
 		return FALSE;
 	}
-
+*/
 	CloseHandle(hSourceFile);
 	CloseHandle(hDestFile);
 
