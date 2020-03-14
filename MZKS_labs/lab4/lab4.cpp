@@ -11,178 +11,134 @@ biBitCount равное 24).
 #include "cstdio"
 #include "windows.h"
 
-typedef struct sBMP
+enum class ProgramMode{EmbedMode = 0, RetrieveMode, CheckMode};
+
+typedef struct tagBMP
 {
 	BITMAPFILEHEADER fileHeader;
 	BITMAPINFOHEADER infoHeader;
-	LPRGBQUAD palette;
 	PRGBTRIPLE bitmap;
-	sBMP()
-	{
-		palette = 0;
-		bitmap = 0;
-	}
-	~sBMP()
-	{
-		if (palette)
-			free(palette);
-		if (bitmap)
-			free(bitmap);
-	}
-}*pBMP, BMP;
+	PBYTE pWriter;
+	PBYTE pReader;
+}BMP, *PBMP;
 
-BOOL LoadBitmapFromFile (pBMP hBMP, LPCWSTR lpszFile)
+PBMP LoadBMPFromFile(LPCWSTR lpszPathToBMP)
 {
-	HANDLE hFile;
+	HANDLE hFileBMP;
 	DWORD dwReadedByte;
-	BOOL fResult;
-	LONG biWidth, biHeight;
-	BYTE carryByte[4];
+	LONG biWidthBMP, biHeightBMP;
+	PBMP bmp;
 
-	hFile = CreateFile(lpszFile, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
+	/*Выделяем память под структуру BMP*/
+	bmp = (PBMP)malloc(sizeof(BMP));
+	if (bmp == NULL)
+	{
+		return FALSE;
+	}
+
+	/*Открываем файл с картинкой на чтение и проверяем открылся ли*/
+	hFileBMP = CreateFile(lpszPathToBMP, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
 		FILE_ATTRIBUTE_NORMAL, NULL);
-
-	if (hFile == INVALID_HANDLE_VALUE)
+	if (hFileBMP == INVALID_HANDLE_VALUE)
 	{
-		printf("Error CreateFile! Error = %ld\n", GetLastError());
+		//printf("Error CreateFile! Error = %ld\n", GetLastError());
+		return NULL;
+	}
+
+	/*Читаем из файла заголовки в структуру BMP и проверяем прочитались ли*/
+	if (!ReadFile(hFileBMP, &(bmp->fileHeader), sizeof(BITMAPFILEHEADER), &dwReadedByte, NULL))
+	{
+		return NULL;
+	}
+	if (!ReadFile(hFileBMP, &(bmp->infoHeader), sizeof(BITMAPINFOHEADER), &dwReadedByte, NULL))
+	{
+		return NULL;
+	}
+
+	biWidthBMP = bmp->infoHeader.biWidth;
+	biHeightBMP = bmp->infoHeader.biHeight;
+
+	/*Устанавливаем указатель в файле на место, где находятся пиксели*/
+	SetFilePointer(hFileBMP, bmp->fileHeader.bfOffBits, NULL, FILE_BEGIN);
+
+	/*Выделяем память под bitmap(массив пикселей) и проверяем выделилось ли*/
+	bmp->bitmap = (PRGBTRIPLE)malloc(sizeof(RGBTRIPLE) * biWidthBMP * biHeightBMP);
+	if (bmp->bitmap == NULL)
+	{
 		return FALSE;
 	}
 
-	memset(hBMP, 0, sizeof(BMP));
+	/*Устанавливаем указатели писателя и читателя (нужно для записи и чтения из файла bmp)*/
+	bmp->pWriter = (PBYTE)bmp->bitmap;
+	bmp->pReader = (PBYTE)bmp->bitmap;
 
-	if (!ReadFile(hFile, &(hBMP->fileHeader), sizeof(BITMAPFILEHEADER), &dwReadedByte, NULL))
+	/*В цикле читаем по пикселю и сохраняем в память*/
+	for (INT i = 0; i < biHeightBMP; i++)
 	{
-		printf("Error ReadFile!\n");
-		return FALSE;
-	}
-	if (!ReadFile(hFile, &(hBMP->infoHeader), sizeof(BITMAPINFOHEADER), &dwReadedByte, NULL))
-	{
-		printf("Error ReadFile!\n");
-		return FALSE;
-	}
-
-	/*
-	if (hBMP->infoHeader.biBitCount < 16)
-	{
-		hBMP->palette = (LPRGBQUAD)malloc(sizeof(RGBQUAD) * 1024);
-		if (hBMP->palette == 0)
+		for (INT j = 0; j < biWidthBMP; j++)
 		{
-			printf("Error allocation memory!\n");
-			return FALSE;
-		}
-		if (!ReadFile(hFile, (hBMP->palette), 1024, &dwReadedByte, NULL))
-		{
-			printf("Error ReadFile!\n");
-			return FALSE;
-		}
-	}
-	else
-	{
-		hBMP->palette = 0;
-	}*/
-
-	biWidth = hBMP->infoHeader.biWidth;
-	biHeight = hBMP->infoHeader.biHeight;
-
-	SetFilePointer(hFile, hBMP->fileHeader.bfOffBits, NULL, FILE_BEGIN);
-
-	hBMP->bitmap = (PRGBTRIPLE)malloc(sizeof(RGBTRIPLE) * biWidth * biHeight);
-	if (hBMP->bitmap == 0)
-	{
-		printf("Error allocation memory!\n");
-		return FALSE;
-	}
-
-	for (INT i = 0; i < biHeight; i++)
-	{
-		for (INT j = 0; j < biWidth; j++)
-		{
-			if (!ReadFile(hFile, (hBMP->bitmap + (i * biWidth + j)), sizeof(RGBTRIPLE), &dwReadedByte, NULL))
+			if (!ReadFile(hFileBMP, (bmp->bitmap + (DWORD)(i * biWidthBMP + j)), sizeof(RGBTRIPLE), &dwReadedByte, NULL))
 			{
-				printf("Error ReadFile!\n");
-				return FALSE;
+				return NULL;
 			}
 		}
-		if (!ReadFile(hFile, &carryByte, sizeof(BYTE) * (biWidth % 4), &dwReadedByte, NULL))
-		{
-			printf("Error ReadFile!\n");
-			return FALSE;
-		}
+		SetFilePointer(hFileBMP, biWidthBMP % 4, NULL, FILE_CURRENT);
 	}
 
-	CloseHandle(hFile);
+	CloseHandle(hFileBMP);
 
-	return TRUE;
+	return bmp;
 }
-
-BOOL WriteBitmapInFile(pBMP hBMP, LPCWSTR lpszFile)
+BOOL WriteBMPToFile(LPCWSTR lpszPathToFile, PBMP bmp)
 {
 	HANDLE hFile;
 	DWORD dwWrittedByte;
-	BOOL fResult;
-	LONG biWidth, biHeight;
+	LONG biWidthBMP, biHeightBMP;
 	BYTE carryByte[4];
 
+	/*Зануляем массив carryByte. Данный массив нужен чтобы дописывать в файл нули*/
 	memset(carryByte, 0, sizeof(BYTE) * 4);
 
-	hFile = CreateFile(lpszFile, GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_ALWAYS,
+	/*Открываем файл с картинкой на запись. При этом содержимое файла теряется так как будем перезаписывать*/
+	hFile = CreateFile(lpszPathToFile, GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_ALWAYS,
 		FILE_ATTRIBUTE_NORMAL, NULL);
-
 	if (hFile == INVALID_HANDLE_VALUE)
 	{
 		printf("Error while oppening file!\n");
 		return FALSE;
 	}
 
-	biWidth = hBMP->infoHeader.biWidth;
-	biHeight = hBMP->infoHeader.biHeight;
-
-	/*
-		Вставляем сообщение
-	*/
-	BYTE message[] = "Hi!asdasdfasdfqawefasdfgasdfgaqwergasrgfbsafssarewSGAFESDNFSARSFDBV";
-	//hBMP->fileHeader.bfOffBits += sizeof(message);
-
-	if (!WriteFile(hFile, &(hBMP->fileHeader), sizeof(BITMAPFILEHEADER), &dwWrittedByte, NULL))
+	biWidthBMP = bmp->infoHeader.biWidth;
+	biHeightBMP = bmp->infoHeader.biHeight;
+	
+	/*Пишем в файл заголовки из bmp структуры и проверям записались ли*/
+	if (!WriteFile(hFile, &(bmp->fileHeader), sizeof(BITMAPFILEHEADER), &dwWrittedByte, NULL))
 	{
 		printf("Cannot write in file!\n");
 		return FALSE;
 	}
-	if (!WriteFile(hFile, &(hBMP->infoHeader), sizeof(BITMAPINFOHEADER), &dwWrittedByte, NULL))
+	if (!WriteFile(hFile, &(bmp->infoHeader), sizeof(BITMAPINFOHEADER), &dwWrittedByte, NULL))
 	{
 		printf("Cannot write in file!\n");
 		return FALSE;
 	}
-	if (hBMP->palette)
-	{
-		if (!WriteFile(hFile, &(hBMP->palette), 1024, &dwWrittedByte, NULL))
-		{
-			printf("Cannot write in file!\n");
-			return FALSE;
-		}
-	}
 
-	for (INT i = 0; i < biHeight; i++)
+	/*Пишем в файл массив пикселей*/
+	for (INT i = 0; i < biHeightBMP; i++)
 	{
-		for (INT j = 0; j < biWidth; j++)
+		for (INT j = 0; j < biWidthBMP; j++)
 		{
-			if (!WriteFile(hFile, (hBMP->bitmap + (i * biWidth + j)), sizeof(RGBTRIPLE), &dwWrittedByte, NULL))
+			if (!WriteFile(hFile, (bmp->bitmap + (i * biWidthBMP + j)), sizeof(RGBTRIPLE), &dwWrittedByte, NULL))
 			{
 				printf("Cannot write in file!\n");
 				return FALSE;
 			}
 		}
-		if (!WriteFile(hFile, &carryByte, biWidth % 4, &dwWrittedByte, NULL))
+		if (!WriteFile(hFile, &carryByte, biWidthBMP % 4, &dwWrittedByte, NULL))
 		{
 			printf("Cannot write in file!\n");
 			return FALSE;
 		}
-	}
-
-	if (!WriteFile(hFile, message, sizeof(message), &dwWrittedByte, NULL))
-	{
-		printf("Cannot write in file!\n");
-		return FALSE;
 	}
 
 	CloseHandle(hFile);
@@ -190,125 +146,300 @@ BOOL WriteBitmapInFile(pBMP hBMP, LPCWSTR lpszFile)
 	return TRUE;
 }
 
-BOOL WriteSecretInBMP(LPCWSTR lpszFileBMP, LPCWSTR lpszFileSecret)
+VOID WriteBytesInBMP(PVOID pInBuffer, UINT lengthBuffer, PBMP bmp)
 {
-	HANDLE hFileBMP, hFileSecret;
-	DWORD  dwWrittedByte, dwReadedByte;
-	LONG   biWidth, biHeight;
-	PBYTE  buffer;
-	BYTE   carryByte[4];
-	BMP    bmp;
-
-	memset(carryByte, 0, sizeof(BYTE) * 4);
-
-	if (!LoadBitmapFromFile(&bmp, lpszFileBMP))
+	PBYTE pBuffer = (PBYTE)pInBuffer;
+	for (UINT k = 0; k < lengthBuffer; k++)
 	{
-		return FALSE;
+		for (INT i = 0; i < 8; i++)
+		{
+			*(bmp->pWriter) = ((*pBuffer >> i) & 1) ? *(bmp->pWriter) | 1 : *(bmp->pWriter) & 254;
+			bmp->pWriter++;
+		}
+		pBuffer++;
+	}
+}
+VOID ReadBytesFromBMP(PVOID pOutBuffer, UINT lengthBuffer, PBMP bmp)
+{
+	PBYTE pBuffer = (PBYTE)pOutBuffer;
+	for (UINT k = 0; k < lengthBuffer; k++)
+	{
+		for (INT i = 0; i < 8; i++)
+		{
+			*pBuffer = (*(bmp->pReader) & 1) ? *pBuffer | (1 << i) : *pBuffer & ~(1 << i);
+			bmp->pReader++;
+		}
+		pBuffer++;
+	}
+}
+
+BOOL EmbedMessageInBMP(LPCWSTR lpszPathToMessage, PBMP bmp)
+{
+	HANDLE hFile;
+	DWORD dwReadedByte;
+	DWORD dwCRC;
+	LONG biWidthBMP, biHeightBMP;
+	PBYTE pBuffer;
+
+	/*Открываем файл с сообщением и проверяем открылся ли он*/
+	hFile = CreateFile(lpszPathToMessage, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING,
+		FILE_ATTRIBUTE_NORMAL, NULL);
+	if (hFile == INVALID_HANDLE_VALUE)
+	{
+		//printf("Error CreateFile! Error = %ld\n", GetLastError());
+		return NULL;
 	}
 
-	hFileBMP = CreateFile(lpszFileBMP, GENERIC_ALL, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (hFileBMP == INVALID_HANDLE_VALUE)
-	{
-		printf("Error while oppening file!\n");
-		return FALSE;
-	}
-
-	hFileSecret = CreateFile(lpszFileSecret, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (hFileSecret == INVALID_HANDLE_VALUE)
-	{
-		printf("Error while oppening file!\n");
-		return FALSE;
-	}
-
+	/*Получаем длину файла и проверяем помещается ли сообщение в bmp*/
 	DWORD dwSizeH = 0, dwSizeL = 0;
-	dwSizeL = GetFileSize(hFileSecret, &dwSizeH);
-	LONGLONG lengthSecretFile = ((LONGLONG)dwSizeH * ((LONGLONG)MAXDWORD + 1)) + dwSizeL;
-
-	buffer = (PBYTE)malloc(sizeof(BYTE) * lengthSecretFile);
-	if (buffer == 0)
+	dwSizeL = GetFileSize(hFile, &dwSizeH);
+	LONGLONG fileLength = ((LONGLONG)dwSizeH * ((LONGLONG)MAXDWORD + 1)) + dwSizeL;
+	if (fileLength >= MAXDWORD)
 	{
-		printf("Error allocation memory!\n");
 		return FALSE;
 	}
 
-	if (!ReadFile(hFileSecret, buffer, lengthSecretFile, &dwReadedByte, NULL))
+	biWidthBMP = bmp->infoHeader.biWidth;
+	biHeightBMP = bmp->infoHeader.biHeight;
+
+	if (biWidthBMP * biHeightBMP * 3 / 8 < fileLength + sizeof(DWORD) + sizeof(DWORD))
 	{
-		printf("Error ReadFile!\n");
 		return FALSE;
 	}
 
-	CloseHandle(hFileSecret);
-
-	bmp.fileHeader.bfOffBits += lengthSecretFile;
-
-	if (!WriteFile(hFileBMP, &(bmp.fileHeader), sizeof(BITMAPFILEHEADER), &dwWrittedByte, NULL))
+	/*Выделяем память под буфер и читаем в него содержимое файла*/
+	pBuffer = (PBYTE)malloc(sizeof(BYTE) * fileLength);
+	if (pBuffer == NULL)
 	{
-		printf("Cannot write in file!\n");
-		return FALSE;
-	}
-	if (!WriteFile(hFileBMP, &(bmp.infoHeader), sizeof(BITMAPINFOHEADER), &dwWrittedByte, NULL))
-	{
-		printf("Cannot write in file!\n");
-		return FALSE;
-	}
-	if (bmp.palette)
-	{
-		if (!WriteFile(hFileBMP, &(bmp.palette), 1024, &dwWrittedByte, NULL))
-		{
-			printf("Cannot write in file!\n");
-			return FALSE;
-		}
-	}
-	if (!WriteFile(hFileBMP, buffer, lengthSecretFile, &dwWrittedByte, NULL))
-	{
-		printf("Cannot write in file!\n");
 		return FALSE;
 	}
 
-	biWidth = bmp.infoHeader.biWidth;
-	biHeight = bmp.infoHeader.biHeight;
-
-	for (INT i = 0; i < biHeight; i++)
+	if (!ReadFile(hFile, pBuffer, (DWORD)fileLength, &dwReadedByte, NULL))
 	{
-		for (INT j = 0; j < biWidth; j++)
-		{
-			if (!WriteFile(hFileBMP, (bmp.bitmap + (i * biWidth + j)), sizeof(RGBTRIPLE), &dwWrittedByte, NULL))
-			{
-				printf("Cannot write in file!\n");
-				return FALSE;
-			}
-		}
-		if (!WriteFile(hFileBMP, &carryByte, biWidth % 4, &dwWrittedByte, NULL))
-		{
-			printf("Cannot write in file!\n");
-			return FALSE;
-		}
+		return FALSE;
 	}
-	CloseHandle(hFileBMP);
+
+	if (dwReadedByte == 0)
+	{
+		return FALSE;
+	}
+
+	/*Вычисляем контрольную сумму сообщения*/
+	dwCRC = RtlCrc32(pBuffer, fileLength, 0);
+
+	/*Последовательно записываем контрольную сумму, размер сообщения и сообщение*/
+	WriteBytesInBMP(&dwCRC, sizeof(DWORD), bmp);
+	WriteBytesInBMP(&fileLength, sizeof(DWORD), bmp);
+	WriteBytesInBMP(pBuffer, (DWORD)fileLength, bmp);
+
+	return TRUE;
+}
+BOOL RetrieveMessageFromBMP(PBMP bmp, PVOID *pOutBuffer, PDWORD dwOutReaded)
+{
+	DWORD dwCRC, dwCheckCRC;
+	LONG biWidthBMP, biHeightBMP;
+	DWORD readedBytes;
+	PBYTE pBuffer;
+
+	/*Читаем из bmp контрольную сумму и размер сообщения*/
+	ReadBytesFromBMP(&dwCRC, sizeof(DWORD), bmp);
+	ReadBytesFromBMP(&readedBytes, sizeof(DWORD), bmp);
+
+	biWidthBMP = bmp->infoHeader.biWidth;
+	biHeightBMP = bmp->infoHeader.biHeight;
+
+	/*Проверям, могло ли сообщение поместить в bmp*/
+	if (biWidthBMP * biHeightBMP * 3 / 8 < readedBytes + sizeof(DWORD) + sizeof(DWORD))
+	{
+		return FALSE;
+	}
+
+	/*Выделяем память под буфер и читаем в него все байта сообщения из bmp*/
+	pBuffer = (PBYTE)malloc(sizeof(BYTE) * readedBytes);
+	if (pBuffer == NULL)
+	{
+		return FALSE;
+	}
+
+	ReadBytesFromBMP(pBuffer, (DWORD)readedBytes, bmp);
+
+	/*Вычисляем контрольную сумму прочитанного сообщения*/
+	dwCheckCRC = RtlCrc32(pBuffer, readedBytes, 0);
+
+	/*Если контрольные суммы сошлись, то сообщение успешно прочитано.
+	Если нет, то сообщение повреждено или не содержалось в файле*/
+	if (dwCRC != dwCheckCRC)
+	{
+		return FALSE;
+	}
+
+	/*Копируем прочитанное сообщение в буфер назначения*/
+	//memcpy_s(pOutBuffer, lengthBuffer, pBuffer, readedBytes);
+	*pOutBuffer = pBuffer;
+	*dwOutReaded = readedBytes;
 
 	return TRUE;
 }
 
 INT wmain(INT argc, PWSTR argv[])
 {
-	BMP bmp;
-	/*
-	if (!LoadBitmapFromFile(&bmp, L"file.bmp"))
+	PWSTR lpszPathToSecretFile = 0;
+	PWSTR lpszPathToBMP = 0;
+	PBMP pBMP;
+	PBYTE pBuffer;
+	DWORD dwReaded;
+	ProgramMode mode = ProgramMode::EmbedMode;
+
+	if (argc < 2)
 	{
-		printf("GLE = %ld", GetLastError());
-		return -1;
+		printf("Expected params! Use -help \n\n");
+		return 0;
 	}
 
-	if (!WriteBitmapInFile(&bmp, L"copy.bmp"))
+	/*Анализируем входные параметры*/
+	for (INT i = 1; i < argc; i++)
 	{
-		printf("GLE = %ld", GetLastError());
+		if (wcscmp(L"-help", argv[i]) == 0)
+		{
+			printf("Help:\n\
+\t-help - get help!\n\
+\t-embed <PathToSecretMessage> <PathToBMP> - embed secret message from file in bmp\n\
+\t-retrieve <PathToBMP> <PathToFile> - retrieve secret message from BMP and copy in file\n\
+\t-check <PathToBMP> - check contains secret message in bmp\n");
+			return 0;
+		}
+		else if (wcscmp(L"-embed", argv[i]) == 0)
+		{
+			if (++i >= argc)
+			{
+				printf("Expected value after param! Try use \"-help\n");
+				return 0;
+			}
+			lpszPathToSecretFile = argv[i];
+
+			if (++i >= argc)
+			{
+				printf("Expected value after param! Try use \"-help\n");
+				return 0;
+			}
+			lpszPathToBMP = argv[i];
+
+			mode = ProgramMode::EmbedMode;
+			break;
+		}
+		else if (wcscmp(L"-retrieve", argv[i]) == 0)
+		{
+			if (++i >= argc)
+			{
+				printf("Expected value after param! Try use \"-help\n");
+				return 0;
+			}
+			lpszPathToBMP = argv[i];
+
+			if (++i >= argc)
+			{
+				printf("Expected value after param! Try use \"-help\n");
+				return 0;
+			}
+			lpszPathToSecretFile = argv[i];
+
+			mode = ProgramMode::RetrieveMode;
+			break;
+		}
+		else if (wcscmp(L"-check", argv[i]) == 0)
+		{
+			if (++i >= argc)
+			{
+				printf("Expected value after param! Try use \"-help\n");
+				return 0;
+			}
+			lpszPathToBMP = argv[i];
+
+			mode = ProgramMode::CheckMode;
+			break;
+		}
+		else
+		{
+			printf("Unexpected param! Try use \"-help\"\n");
+			return 0;
+		}
+	}
+
+	/*Открываем bmp и загружаем его в структуру*/
+	if (lpszPathToBMP == NULL)
+	{
 		return -1;
 	}
-	*/
-	if (!WriteSecretInBMP(L"file.bmp", L"secret.txt"))
+	pBMP = LoadBMPFromFile(lpszPathToBMP);
+	if (pBMP == NULL)
 	{
-		printf("GLE = %ld", GetLastError());
-		return -1;
+		printf("Cannot open/read BMP file!\n");
+		return 0;
 	}
+
+	/*Дешефрируем работу программы*/
+	switch (mode)
+	{
+		/*Внедряем сообщение в bmp*/
+	case ProgramMode::EmbedMode:
+		if (!EmbedMessageInBMP(lpszPathToSecretFile, pBMP))
+		{
+			printf("Cannot embed message to BMP file!\n");
+			return 0;
+		}
+
+		if (!WriteBMPToFile(lpszPathToBMP, pBMP))
+		{
+			printf("Cannot rewrite BMP file!\n");
+			return 0;
+		}
+
+		printf("Done!\n");
+		break;
+
+		/*Пытааемся прочитать сообщение из bmp*/
+	case ProgramMode::RetrieveMode:
+		if (!RetrieveMessageFromBMP(pBMP, (PVOID*)&pBuffer, &dwReaded))
+		{
+			printf("Cannot retrieve message from BMP file!\n");
+			return 0;
+		}
+		HANDLE hFile;
+		if (lpszPathToSecretFile == NULL)
+		{
+			return 0;
+		}
+		hFile = CreateFile(lpszPathToSecretFile, GENERIC_WRITE, FILE_SHARE_READ, NULL, OPEN_ALWAYS,
+			FILE_ATTRIBUTE_NORMAL, NULL);
+		if (hFile == INVALID_HANDLE_VALUE)
+		{
+			printf("Cannot open file %ws\n", lpszPathToSecretFile);
+			return 0;
+		}
+
+		if (!WriteFile(hFile, pBuffer, dwReaded, NULL, NULL))
+		{
+			printf("Cannot write message in file %ws\n", lpszPathToSecretFile);
+			return 0;
+		}
+
+		printf("Done!\n");
+		break;
+
+		/*Проверяем есть ли в bmp сообщение*/
+	case ProgramMode::CheckMode:
+		if (!RetrieveMessageFromBMP(pBMP, (PVOID*)&pBuffer, &dwReaded))
+		{
+			printf("BMP file dont have message!!\n");
+			return 0;
+		}
+		printf("BMP file have message!\n");
+		break;
+	default:
+		printf("Unxpected error! Exiting\n");
+		return -1;
+		break;
+	}
+
 	return 0;
 }
